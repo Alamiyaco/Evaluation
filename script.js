@@ -458,8 +458,6 @@ function evalCard(item,mode,i){
   card.style.animationDelay=`${i*50}ms`;
   if(mode==="late") card.classList.add("late");
 
-  const av=n.querySelector(".kard-avatar");
-  av.textContent=initials(item.name);
   n.querySelector(".kard-name").textContent=item.name||"-";
   n.querySelector(".kard-sub").textContent=`${item.dept} · ${item.type}`;
 
@@ -499,7 +497,11 @@ function evtCard(item,pageKey,i){
   b.textContent=item.type||item.cat||"مناسبة"; b.classList.add(eBadgeCls(pageKey));
 
   const note=(item.note||"").trim();
-  if(note){ const nr=n.querySelector(".kard-note-row"); nr.style.display=""; n.querySelector(".kard-note").textContent=note; }
+  if(note){
+    const nr=n.querySelector(".kard-note-row");
+    nr.style.display="";
+    n.querySelector(".kard-note").textContent=note;
+  }
 
   n.querySelector(".kard-date-txt").textContent=fmtAr(item.date);
   const dl=n.querySelector(".kard-days");
@@ -515,7 +517,11 @@ function evtCard(item,pageKey,i){
 function fillFilt(opts,def){
   const cur=dynamicFilter.value;
   dynamicFilter.innerHTML=`<option value="">${def}</option>`;
-  opts.forEach(o=>{ const el=document.createElement("option"); el.value=el.textContent=o; dynamicFilter.appendChild(el); });
+  opts.forEach(o=>{
+    const el=document.createElement("option");
+    el.value=el.textContent=o;
+    dynamicFilter.appendChild(el);
+  });
   if([...dynamicFilter.options].some(o=>o.value===cur)) dynamicFilter.value=cur;
 }
 
@@ -556,7 +562,8 @@ function renderEvals(emps){
 
   const depts=[...new Set(emps.map(e=>e.department).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"ar"));
   fillFilt(depts,"كل الأقسام");
-  dynBox.classList.remove("hidden"); winBox.classList.remove("hidden");
+  dynBox.classList.remove("hidden");
+  winBox.classList.remove("hidden");
 
   S.counts[S.page]={late:late.length,todayN:tod.length,upcoming:up.length,total:names.size||emps.length};
   updateNavCounts();
@@ -610,7 +617,8 @@ function renderEvts(items,pageKey){
     fillFilt([...new Set(items.flatMap(i=>[i.cat,i.type]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"ar")),"كل الفئات");
   else
     fillFilt([...new Set(items.map(i=>i.dept).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"ar")),"كل الأقسام");
-  dynBox.classList.remove("hidden"); winBox.classList.add("hidden");
+  dynBox.classList.remove("hidden");
+  winBox.classList.add("hidden");
 
   const isBday=pageKey==="birthdays";
   S.counts[S.page]={late:late.length,todayN:tod.length,upcoming:up.length,total:filt.length};
@@ -651,7 +659,8 @@ function buildNav(){
     btn.addEventListener("click",()=>{
       if(S.page===btn.dataset.page)return;
       S.page=btn.dataset.page;
-      dynamicFilter.value=""; searchInput.value="";
+      dynamicFilter.value="";
+      searchInput.value="";
       render();
     });
   });
