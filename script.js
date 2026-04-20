@@ -296,25 +296,32 @@ function mapEvals(rows){
   const heads = (rows[0] || []).map(h => (h || "").toString().trim());
   const hnorm = heads.map(norm);
 
-  function idxOf(aliases){
+  function exactIdx(aliases){
     const wanted = aliases.map(norm);
-    return hnorm.findIndex(h => wanted.some(a => h === a || h.includes(a) || a.includes(h)));
+    return hnorm.findIndex(h => wanted.includes(h));
+  }
+
+  function looseIdx(aliases){
+    const wanted = aliases.map(norm);
+    return hnorm.findIndex(h => wanted.some(a => h === a || h.includes(a)));
   }
 
   function cell(row, idx){
     return idx >= 0 ? (row[idx] ?? "") : "";
   }
 
-  const nameIdx = idxOf(["اسم الموظف","الاسم","name","الموظف"]);
-  const deptIdx = idxOf(["القسم","department","الادارة","الوحدة"]);
+  const nameIdx = looseIdx(["اسم الموظف","الاسم","name","الموظف"]);
+  const deptIdx = looseIdx(["القسم","department","الادارة","الوحدة"]);
 
-  const eval1Idx = idxOf(["التقييم الاول","التقييم الأول","first evaluation","تاريخ التقييم الاول","تاريخ التقييم الأول"]);
-  const eval2Idx = idxOf(["التقييم الثاني","second evaluation","تاريخ التقييم الثاني"]);
-  const eval3Idx = idxOf(["التقييم الثالث","third evaluation","تاريخ التقييم الثالث"]);
+  // أعمدة التقييم
+  const eval1Idx = exactIdx(["التقييم الاول","التقييم الأول","first evaluation","تاريخ التقييم الاول","تاريخ التقييم الأول"]);
+  const eval2Idx = exactIdx(["التقييم الثاني","second evaluation","تاريخ التقييم الثاني"]);
+  const eval3Idx = exactIdx(["التقييم الثالث","third evaluation","تاريخ التقييم الثالث"]);
 
-  const res1Idx = idxOf(["النتيجة1","النتيجة 1","نتيجة1","نتيجة 1","result1","result 1","نتيجة التقييم الاول","نتيجة التقييم الأول"]);
-  const res2Idx = idxOf(["النتيجة2","النتيجة 2","نتيجة2","نتيجة 2","result2","result 2","نتيجة التقييم الثاني"]);
-  const res3Idx = idxOf(["النتيجة3","النتيجة 3","نتيجة3","نتيجة 3","result3","result 3","نتيجة التقييم الثالث"]);
+  // أعمدة النتيجة — مطابقة صارمة فقط
+  const res1Idx = exactIdx(["النتيجة1","النتيجة 1","نتيجة1","نتيجة 1","result1","result 1"]);
+  const res2Idx = exactIdx(["النتيجة2","النتيجة 2","نتيجة2","نتيجة 2","result2","result 2"]);
+  const res3Idx = exactIdx(["النتيجة3","النتيجة 3","نتيجة3","نتيجة 3","result3","result 3"]);
 
   return rows.slice(1).map(row => ({
     name: cell(row, nameIdx).toString().trim(),
@@ -592,7 +599,7 @@ function renderEvals(emps){
     chip("التقييمات المتأخرة", late.length, "sc-red",   "⚠️")+
     chip("مستحق اليوم",        tod.length,  "sc-amber", "📌")+
     chip("التقييمات القادمة",  up.length,   "sc-cyan",  "🗓️")+
-    chip("إجمالي الموظفين",    names.size||emps.length, "sc-violet","👥");
+    chip("إجمالي الموظفين", names.size||emps.length, "sc-violet","👥");
   animateChips();
 
   pageContent.innerHTML=`<div class="panels col3">
