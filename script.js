@@ -293,26 +293,16 @@ function csvUrl(sheetName){
 function mapEvals(rows){
   if(!rows?.length) return [];
 
-  const heads=(rows[0]||[]).map(h=>(h||"").toString().trim());
-  const hnorm=heads.map(norm);
+  const heads = (rows[0] || []).map(h => (h || "").toString().trim());
+  const hnorm = heads.map(norm);
 
   function idxOf(aliases){
-    const wanted=aliases.map(norm);
-    return hnorm.findIndex(h=>wanted.some(a=>h===a||h.includes(a)||a.includes(h)));
+    const wanted = aliases.map(norm);
+    return hnorm.findIndex(h => wanted.some(a => h === a || h.includes(a) || a.includes(h)));
   }
 
-  function nextResultIdx(fromIdx,toIdxExclusive){
-    if(fromIdx<0) return -1;
-    for(let i=fromIdx+1;i<Math.min(toIdxExclusive,heads.length);i++){
-      const h=hnorm[i];
-      if(!h) continue;
-      if(
-        h==="النتيجه" || h==="النتيجة" ||
-        h.includes("نتيجه") || h.includes("النتيجه") || h.includes("النتيجة") ||
-        h==="result" || h.startsWith("result")
-      ) return i;
-    }
-    return -1;
+  function cell(row, idx){
+    return idx >= 0 ? (row[idx] ?? "") : "";
   }
 
   const nameIdx = idxOf(["اسم الموظف","الاسم","name","الموظف"]);
@@ -322,23 +312,34 @@ function mapEvals(rows){
   const eval2Idx = idxOf(["التقييم الثاني","second evaluation","تاريخ التقييم الثاني"]);
   const eval3Idx = idxOf(["التقييم الثالث","third evaluation","تاريخ التقييم الثالث"]);
 
-  const res1Direct = idxOf(["نتيجة التقييم الاول","نتيجة الاول","نتيجة 1","النتيجة 1","result 1","نتيجة الأول","نتيجة التقييم الأول"]);
-  const res2Direct = idxOf(["نتيجة التقييم الثاني","نتيجة الثاني","نتيجة 2","النتيجة 2","result 2"]);
-  const res3Direct = idxOf(["نتيجة التقييم الثالث","نتيجة الثالث","نتيجة 3","النتيجة 3","result 3"]);
+  const res1Idx = idxOf(["النتيجة1","النتيجة 1","نتيجة1","نتيجة 1","result1","result 1","نتيجة التقييم الاول","نتيجة التقييم الأول"]);
+  const res2Idx = idxOf(["النتيجة2","النتيجة 2","نتيجة2","نتيجة 2","result2","result 2","نتيجة التقييم الثاني"]);
+  const res3Idx = idxOf(["النتيجة3","النتيجة 3","نتيجة3","نتيجة 3","result3","result 3","نتيجة التقييم الثالث"]);
 
-  const res1Idx = res1Direct >= 0 ? res1Direct : nextResultIdx(eval1Idx, eval2Idx >= 0 ? eval2Idx : heads.length);
-  const res2Idx = res2Direct >= 0 ? res2Direct : nextResultIdx(eval2Idx, eval3Idx >= 0 ? eval3Idx : heads.length);
-  const res3Idx = res3Direct >= 0 ? res3Direct : nextResultIdx(eval3Idx, heads.length);
-
-  return rows.slice(1).map(row=>({
-    name: (row[nameIdx] || "").toString().trim(),
-    department: (row[deptIdx] || "").toString().trim() || "بدون قسم",
-    evaluations:[
-      {type:"التقييم الأول",key:"first",  date:toIso(row[eval1Idx]), result: row[res1Idx] ?? ""},
-      {type:"التقييم الثاني",key:"second", date:toIso(row[eval2Idx]), result: row[res2Idx] ?? ""},
-      {type:"التقييم الثالث",key:"third",  date:toIso(row[eval3Idx]), result: row[res3Idx] ?? ""}
+  return rows.slice(1).map(row => ({
+    name: cell(row, nameIdx).toString().trim(),
+    department: cell(row, deptIdx).toString().trim() || "بدون قسم",
+    evaluations: [
+      {
+        type: "التقييم الأول",
+        key: "first",
+        date: toIso(cell(row, eval1Idx)),
+        result: cell(row, res1Idx)
+      },
+      {
+        type: "التقييم الثاني",
+        key: "second",
+        date: toIso(cell(row, eval2Idx)),
+        result: cell(row, res2Idx)
+      },
+      {
+        type: "التقييم الثالث",
+        key: "third",
+        date: toIso(cell(row, eval3Idx)),
+        result: cell(row, res3Idx)
+      }
     ]
-  })).filter(x=>hasV(x.name));
+  })).filter(x => hasV(x.name));
 }
 function mapEvts(rows,pageKey){
   const def=pageKey==="birthdays"?"عيد ميلاد":pageKey==="employeeEvents"?"مناسبة موظف":"مناسبة عامة";
@@ -356,24 +357,43 @@ function mapEvts(rows,pageKey){
 /* ════════════════════════════════════════════════════
    LOAD (cache + fallback)
    ════════════════════════════════════════════════════ */
-async function loadData(pageKey,force=false){
-  const now=Date.now();
-  if(!force&&S.cache[pageKey]&&(now-(S.cacheAt[pageKey]||0))<S.TTL) return S.cache[pageKey];
+async function loadData(pageKey, force=false){
+  const now = Date.now();
+
+  if(!force && S.cache[pageKey] && (now - (S.cacheAt[pageKey] || 0)) < S.TTL){
+    return S.cache[pageKey];
+  }
+
+  const cfg = window.APP_CONFIG.pages[pageKey];
+
   try{
-    const cfg=window.APP_CONFIG.pages[pageKey];
-    const txt=await fetchTxt(csvUrl(cfg.sheetName));
-    const rows=parseCsv(txt);
-    const data=pageKey==="evaluations"?mapEvals(rows):mapEvts(rows,pageKey);
-    if(data.length){ S.cache[pageKey]=data; S.cacheAt[pageKey]=now; markUpdated(); return data; }
-    throw new Error("empty");
+    const txt = await fetchTxt(csvUrl(cfg.sheetName));
+    const rows = parseCsv(txt);
+    const data = pageKey === "evaluations" ? mapEvals(rows) : mapEvts(rows, pageKey);
+
+    S.cache[pageKey] = data;
+    S.cacheAt[pageKey] = now;
+    markUpdated();
+
+    return data;
   }catch(e){
-    console.warn(`[${pageKey}]`,e.message);
-    const fb=window.FALLBACK_DATA?.[pageKey]||[];
-    if(fb.length){
-      toast("تم التحميل من البيانات الاحتياطية — تحقق من اتصالك أو صلاحيات الشيت","warn",5500);
-      S.cache[pageKey]=fb; S.cacheAt[pageKey]=now; return fb;
+    console.error(`[${pageKey}] load failed:`, e);
+
+    if (pageKey === "evaluations") {
+      toast("تعذر تحميل صفحة التقييمات من Google Sheets. الموقع لم يستخدم البيانات الحية.", "error", 6000);
+      return [];
     }
-    toast("فشل تحميل البيانات","error"); return [];
+
+    const fb = window.FALLBACK_DATA?.[pageKey] || [];
+    if(fb.length){
+      toast("تم التحميل من البيانات الاحتياطية", "warn", 4500);
+      S.cache[pageKey] = fb;
+      S.cacheAt[pageKey] = now;
+      return fb;
+    }
+
+    toast("فشل تحميل البيانات", "error");
+    return [];
   }
 }
 
