@@ -363,24 +363,32 @@ function csvUrl(sheetName){
    MAPPERS
    ════════════════════════════════════════════════════ */
 function mapEvals(rows){
-  if (!rows || rows.length < 2) return [];
+  if (!rows || rows.length < 2) {
+    console.log("mapEvals: no rows");
+    return [];
+  }
 
-  return rows.slice(1).map(row => {
-    const name = (row[0] ?? "").toString().trim();   // A
-    const department = (row[1] ?? "").toString().trim() || "بدون قسم"; // B
+  const data = rows.slice(1).map((row, i) => {
+    const name = (row[0] ?? "").toString().trim();         // A
+    const department = (row[1] ?? "").toString().trim();   // B
     const nextEvaluation = (row[9] ?? "").toString().trim(); // J
-    const nextEvaluationDate = toIso(row[10] ?? ""); // K
+    const nextEvaluationDate = toIso(row[10] ?? "");         // K
 
-    return {
+    const item = {
       name,
-      department,
+      department: department || "بدون قسم",
       nextEvaluation,
       nextEvaluationDate
     };
-  })
-  .filter(x => hasV(x.name))
-  .filter(x => hasV(x.nextEvaluation))
-  .filter(x => norm(x.nextEvaluation) !== norm("مكتمل"));
+
+    if (i < 5) console.log("ROW ITEM", i + 2, item);
+    return item;
+  });
+
+  return data
+    .filter(x => hasV(x.name))
+    .filter(x => hasV(x.nextEvaluation))
+    .filter(x => norm(x.nextEvaluation) !== norm("مكتمل"));
 }
 
 function mapEvts(rows, pageKey){
@@ -402,39 +410,33 @@ function mapEvts(rows, pageKey){
 async function loadData(pageKey, force=false){
   const now = Date.now();
 
-  if (!force && S.cache[pageKey] && (now - (S.cacheAt[pageKey] || 0)) < S.TTL) {
+  if(!force && S.cache[pageKey] && (now - (S.cacheAt[pageKey] || 0)) < S.TTL){
     return S.cache[pageKey];
   }
 
   const cfg = window.APP_CONFIG.pages[pageKey];
+  const url = csvUrl(cfg.sheetName);
 
-  try {
-    const txt = await fetchTxt(csvUrl(cfg.sheetName));
+  try{
+    console.log("LOAD PAGE:", pageKey);
+    console.log("CSV URL:", url);
+
+    const txt = await fetchTxt(url);
+    console.log("CSV RAW:", txt.slice(0, 500));
+
     const rows = parseCsv(txt);
+    console.log("CSV ROWS:", rows);
+
     const data = pageKey === "evaluations" ? mapEvals(rows) : mapEvts(rows, pageKey);
+    console.log("PARSED DATA:", data);
 
     S.cache[pageKey] = data;
     S.cacheAt[pageKey] = now;
     markUpdated();
-
     return data;
-  } catch (e) {
-    console.error(`[${pageKey}] load failed:`, e);
-
-    if (pageKey === "evaluations") {
-      toast("تعذر تحميل صفحة التقييمات من Google Sheets", "error", 6000);
-      return [];
-    }
-
-    const fb = window.FALLBACK_DATA?.[pageKey] || [];
-    if (fb.length) {
-      toast("تم التحميل من البيانات الاحتياطية", "warn", 4500);
-      S.cache[pageKey] = fb;
-      S.cacheAt[pageKey] = now;
-      return fb;
-    }
-
-    toast("فشل تحميل البيانات", "error");
+  }catch(e){
+    console.error(`[${pageKey}] load failed بالكامل:`, e);
+    toast(`فشل تحميل ${cfg.sheetName}`, "error", 7000);
     return [];
   }
 }
@@ -622,7 +624,9 @@ function fillFilt(opts, def){
    EVALUATIONS
    ════════════════════════════════════════════════════ */
 function flatEvals(emps){
-  return emps
+  console.log("EMPS BEFORE FLAT:", emps);
+
+  const out = emps
     .map(e => ({
       name: e.name,
       dept: e.department || "بدون قسم",
@@ -636,8 +640,10 @@ function flatEvals(emps){
     }))
     .filter(x => hasV(x.name))
     .filter(x => hasV(x.type))
-    .filter(x => x.date && pd(x.date))
-    .sort((a,b) => new Date(a.date) - new Date(b.date));
+    .filter(x => x.date && pd(x.date));
+
+  console.log("FLAT EVALS:", out);
+  return out.sort((a,b) => new Date(a.date) - new Date(b.date));
 }
 
 function renderEvals(emps){
