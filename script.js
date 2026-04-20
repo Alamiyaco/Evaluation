@@ -363,35 +363,24 @@ function csvUrl(sheetName){
    MAPPERS
    ════════════════════════════════════════════════════ */
 function mapEvals(rows){
-  if (!rows?.length) return [];
+  if (!rows || rows.length < 2) return [];
 
-  const heads = (rows[0] || []).map(h => (h || "").toString().trim());
-  const hnorm = heads.map(norm);
+  return rows.slice(1).map(row => {
+    const name = (row[0] ?? "").toString().trim();   // A
+    const department = (row[1] ?? "").toString().trim() || "بدون قسم"; // B
+    const nextEvaluation = (row[9] ?? "").toString().trim(); // J
+    const nextEvaluationDate = toIso(row[10] ?? ""); // K
 
-  function looseIdx(aliases){
-    const wanted = aliases.map(norm);
-    return hnorm.findIndex(h => wanted.some(a => h === a || h.includes(a) || a.includes(h)));
-  }
-
-  function cell(row, idx){
-    return idx >= 0 ? (row[idx] ?? "") : "";
-  }
-
-  const nameIdx     = looseIdx(["اسم الموظف","الاسم","name","الموظف"]);
-  const deptIdx     = looseIdx(["القسم","department","الادارة","الوحدة"]);
-  const nextEvalIdx = looseIdx(["التقييم التالي","التقييم القادم","next evaluation"]);
-  const nextDateIdx = looseIdx(["تاريخ التقييم التالي","تاريخ التقييم القادم","next evaluation date"]);
-
-  return rows.slice(1)
-    .map(row => ({
-      name: cell(row, nameIdx).toString().trim(),
-      department: cell(row, deptIdx).toString().trim() || "بدون قسم",
-      nextEvaluation: cell(row, nextEvalIdx).toString().trim(),
-      nextEvaluationDate: toIso(cell(row, nextDateIdx))
-    }))
-    .filter(x => hasV(x.name))
-    .filter(x => hasV(x.nextEvaluation))
-    .filter(x => norm(x.nextEvaluation) !== norm("مكتمل"));
+    return {
+      name,
+      department,
+      nextEvaluation,
+      nextEvaluationDate
+    };
+  })
+  .filter(x => hasV(x.name))
+  .filter(x => hasV(x.nextEvaluation))
+  .filter(x => norm(x.nextEvaluation) !== norm("مكتمل"));
 }
 
 function mapEvts(rows, pageKey){
@@ -640,17 +629,21 @@ function flatEvals(emps){
       type: e.nextEvaluation,
       key:
         norm(e.nextEvaluation) === norm("التقييم الأول") ? "first" :
-        norm(e.nextEvaluation) === norm("التقييم الثاني") ? "second" : "third",
+        norm(e.nextEvaluation) === norm("التقييم الثاني") ? "second" :
+        norm(e.nextEvaluation) === norm("التقييم الثالث") ? "third" : "third",
       date: e.nextEvaluationDate,
-      done: false,
       d: e.nextEvaluationDate ? dDiff(TODAY, pd(e.nextEvaluationDate)) : null
     }))
+    .filter(x => hasV(x.name))
+    .filter(x => hasV(x.type))
     .filter(x => x.date && pd(x.date))
     .sort((a,b) => new Date(a.date) - new Date(b.date));
 }
 
 function renderEvals(emps){
   const flat  = flatEvals(emps);
+  console.log("emps:", emps);
+  console.log("flat:", flat);
   const q     = norm(searchInput.value);
   const dept  = dynamicFilter.value;
   const maxD  = +windowFilter.value;
