@@ -368,39 +368,32 @@ function mapEvals(rows){
     return [];
   }
 
-  const data = rows.slice(1).map((row, i) => {
-    const name = (row[0] ?? "").toString().trim();           // A = اسم الموظف
-    const department = (row[1] ?? "").toString().trim();     // B = القسم
+  const data = toObjs(rows).map((r, i) => {
+    const name = fcol(r, ["اسم الموظف", "الاسم", "name"]);
+    const department = fcol(r, ["القسم", "department"]);
 
-    const eval1Date = toIso(row[3] ?? "");                   // D = التقييم الاول
-    const result1   = (row[4] ?? "").toString().trim();      // E = النتيجة1
+    const eval1Date = toIso(fcol(r, ["التقييم الاول", "التقييم الأول"]));
+    const result1   = (fcol(r, ["النتيجة1", "النتيجة 1"]) || "").toString().trim();
 
-    const eval2Date = toIso(row[5] ?? "");                   // F = التقييم الثاني
-    const result2   = (row[6] ?? "").toString().trim();      // G = النتيجة2
+    const eval2Date = toIso(fcol(r, ["التقييم الثاني"]));
+    const result2   = (fcol(r, ["النتيجة2", "النتيجة 2"]) || "").toString().trim();
 
-    const eval3Date = toIso(row[7] ?? "");                   // H = التقييم الثالث
-    const result3   = (row[8] ?? "").toString().trim();      // I = النتيجة3
+    const eval3Date = toIso(fcol(r, ["التقييم الثالث"]));
+    const result3   = (fcol(r, ["النتيجة3", "النتيجة 3"]) || "").toString().trim();
 
     let nextEvaluation = "";
     let nextEvaluationDate = "";
 
-    // إذا التقييم الأول لم يُنجز بعد
     if (!hasV(result1)) {
       nextEvaluation = "التقييم الأول";
       nextEvaluationDate = eval1Date;
-    }
-    // إذا الأول منجز والثاني لم يُنجز بعد
-    else if (!hasV(result2)) {
+    } else if (!hasV(result2)) {
       nextEvaluation = "التقييم الثاني";
       nextEvaluationDate = eval2Date;
-    }
-    // إذا الأول والثاني منجزين والثالث لم يُنجز بعد
-    else if (!hasV(result3)) {
+    } else if (!hasV(result3)) {
       nextEvaluation = "التقييم الثالث";
       nextEvaluationDate = eval3Date;
-    }
-    // إذا كلها منجزة، لا يظهر بالموقع
-    else {
+    } else {
       nextEvaluation = "";
       nextEvaluationDate = "";
     }
@@ -412,7 +405,17 @@ function mapEvals(rows){
       nextEvaluationDate
     };
 
-    if (i < 5) console.log("ROW ITEM", i + 2, item);
+    if (i < 10) {
+      console.log("ROW ITEM", i + 2, {
+        name,
+        result1,
+        result2,
+        result3,
+        nextEvaluation,
+        nextEvaluationDate
+      });
+    }
+
     return item;
   });
 
