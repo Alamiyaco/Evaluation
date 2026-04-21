@@ -369,10 +369,41 @@ function mapEvals(rows){
   }
 
   const data = rows.slice(1).map((row, i) => {
-    const name = (row[0] ?? "").toString().trim();         // A
-    const department = (row[1] ?? "").toString().trim();   // B
-    const nextEvaluation = (row[9] ?? "").toString().trim(); // J
-    const nextEvaluationDate = toIso(row[10] ?? "");         // K
+    const name = (row[0] ?? "").toString().trim();           // A = اسم الموظف
+    const department = (row[1] ?? "").toString().trim();     // B = القسم
+
+    const eval1Date = toIso(row[3] ?? "");                   // D = التقييم الاول
+    const result1   = (row[4] ?? "").toString().trim();      // E = النتيجة1
+
+    const eval2Date = toIso(row[5] ?? "");                   // F = التقييم الثاني
+    const result2   = (row[6] ?? "").toString().trim();      // G = النتيجة2
+
+    const eval3Date = toIso(row[7] ?? "");                   // H = التقييم الثالث
+    const result3   = (row[8] ?? "").toString().trim();      // I = النتيجة3
+
+    let nextEvaluation = "";
+    let nextEvaluationDate = "";
+
+    // إذا التقييم الأول لم يُنجز بعد
+    if (!hasV(result1)) {
+      nextEvaluation = "التقييم الأول";
+      nextEvaluationDate = eval1Date;
+    }
+    // إذا الأول منجز والثاني لم يُنجز بعد
+    else if (!hasV(result2)) {
+      nextEvaluation = "التقييم الثاني";
+      nextEvaluationDate = eval2Date;
+    }
+    // إذا الأول والثاني منجزين والثالث لم يُنجز بعد
+    else if (!hasV(result3)) {
+      nextEvaluation = "التقييم الثالث";
+      nextEvaluationDate = eval3Date;
+    }
+    // إذا كلها منجزة، لا يظهر بالموقع
+    else {
+      nextEvaluation = "";
+      nextEvaluationDate = "";
+    }
 
     const item = {
       name,
@@ -388,7 +419,7 @@ function mapEvals(rows){
   return data
     .filter(x => hasV(x.name))
     .filter(x => hasV(x.nextEvaluation))
-    .filter(x => norm(x.nextEvaluation) !== norm("مكتمل"));
+    .filter(x => hasV(x.nextEvaluationDate));
 }
 
 function mapEvts(rows, pageKey){
